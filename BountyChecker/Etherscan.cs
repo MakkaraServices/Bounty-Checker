@@ -5,6 +5,7 @@ using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using Microsoft.Win32;
 
 namespace BountyChecker
 {
@@ -85,5 +86,44 @@ namespace BountyChecker
             return new Connection(false, null);
         }
 
+        public static void SaveKeyOnRegistry(string apikey)
+        {
+            try
+            {
+                RegistryKey key = Registry.CurrentUser.CreateSubKey(@"SOFTWARE\BountyChecker");
+
+                key.SetValue("ApiKey", apikey);
+                key.Close();
+            }
+            catch (Exception e)
+            {
+
+            }
+
+        }
+
+        public static string ReadKeyFromRegistry()
+        {
+            string keyvalue = "PASTE_ETHERSCAN_API_HERE";
+
+            try
+            {
+               
+                RegistryKey key = Registry.CurrentUser.OpenSubKey(@"SOFTWARE\BountyChecker");
+
+                if (key != null)
+                {
+                    keyvalue = key.GetValue("ApiKey").ToString();
+                    key.Close();
+                }
+
+                return keyvalue;
+            }
+            catch (Exception e)
+            {
+                return keyvalue;
+            }
+
+        }
     }
 }

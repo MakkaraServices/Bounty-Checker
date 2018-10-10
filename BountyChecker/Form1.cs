@@ -22,6 +22,7 @@ namespace BountyChecker
         {
             InitializeComponent();
             m_mainForm = this;
+            textBox1.Text = Etherscan.ReadKeyFromRegistry();
         }
 
         static async Task<bool> PerformCheck(Form1 form)
@@ -58,6 +59,7 @@ namespace BountyChecker
         private async void button1_Click(object sender, EventArgs e)
         {
             button1.Enabled = false;
+            Etherscan.SaveKeyOnRegistry(textBox1.Text);
             // Start the HandleFile method.
             await PerformCheck(this.m_mainForm);
 
@@ -116,6 +118,6 @@ namespace BountyChecker
 
             List<string> list = ProjectLoader.GetProjectsCampaigns(this.ProjectSelected);
 
-        }
+        }        
     }
 }
