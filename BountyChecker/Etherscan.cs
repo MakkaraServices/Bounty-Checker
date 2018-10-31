@@ -9,17 +9,6 @@ using Microsoft.Win32;
 
 namespace BountyChecker
 {
-    class Connection
-    {
-        public bool Result { get; set; }
-        public string Address { get; set; }
-
-        public Connection(bool result, string address)
-        {
-            Result = result;
-            Address = address;
-        }
-    }
     class Etherscan
     {
         string erc20Transaction = "http://api.etherscan.io/api?module=account&action=tokentx&startblock=0&endblock=999999999&sort=asc&apikey=";
@@ -70,7 +59,6 @@ namespace BountyChecker
                 Console.WriteLine("Retrying to get: " + erc20Transaction + ethAddress);
                 goto retry;
             }
-            return jsnString;
         }
 
         public Connection CheckIfAnyTrasactionWithOtherAddress(Dictionary<string,string>  addressList, string address_to_Check)
@@ -97,7 +85,7 @@ namespace BountyChecker
             }
             catch (Exception e)
             {
-
+                Console.WriteLine("ERROR saving to registry: " +  e.Message);
             }
 
         }
@@ -121,6 +109,7 @@ namespace BountyChecker
             }
             catch (Exception e)
             {
+                Console.WriteLine("ERROR reading from tegistry: " + e.Message);
                 return keyvalue;
             }
 

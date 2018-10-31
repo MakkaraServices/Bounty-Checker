@@ -5,6 +5,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using System.Windows.Forms.VisualStyles;
+using Newtonsoft.Json;
 
 namespace BountyChecker
 {
@@ -13,7 +15,7 @@ namespace BountyChecker
     {
 
 
-        public static async Task<bool> CheckAddressList(string projectName,Campaign campaign, IProgress<ProgressStatus> progressinfo, string etherscanKey)
+        public static async Task<bool> CheckAddressListEthereum(string projectName,Campaign campaign, IProgress<ProgressStatus> progressinfo, string etherscanKey)
         {
             int counter = 0;
             Etherscan ethreScan = new Etherscan(etherscanKey);
@@ -49,7 +51,7 @@ namespace BountyChecker
 
                     if (connected.Result == true)
                     {
-                        bountydata.AddUser(address.Value, address.Key);
+                        bountydata.AddUserEth(address.Value, address.Key);
 
                         fileResult.WriteLine(campaign.Partecipants[connected.Address] + " -> " + element["tokenName"].Value<string>() + "(" + element["tokenSymbol"].Value<string>() + ")" + "https://etherscan.io/tx/" + element["hash"].Value<string>() + " " + element["from"].Value<string>() + " " + element["to"].Value<string>());
                         //Console.WriteLine(addressList[connected.Address] + " -> " + element["tokenName"].Value<string>() + "(" + element["tokenSymbol"].Value<string>() + ")" + "https://etherscan.io/tx/" + element["hash"].Value<string>() + " " + element["from"].Value<string>() + " " + element["to"].Value<string>());
@@ -64,6 +66,161 @@ namespace BountyChecker
                 currentAddressProgress++;
                 ReportProgressStatus(progressinfo, totalAddress, currentAddressProgress,
                     campaign.Name + " - Verified " + address.Key + " - " + currentAddressProgress + "/" + totalAddress, 
+                    Report.Address);
+
+
+                counter++;
+            }
+
+            fileResult.Close();
+
+
+            return true;
+        }
+
+        public static async Task<bool> CheckAddressListBitcoin(string projectName, Campaign campaign, IProgress<ProgressStatus> progressinfo)
+        {
+            int counter = 0;
+            Smartbit bitcoinScan = new Smartbit();
+            Connection connected = null;
+            int currentAddressProgress = 0;
+            int totalAddress = campaign.Partecipants.Count;
+            int currentTransactionProgress = 0;
+            int totalTransaction = 0;
+            string runResults = "results.txt";
+            System.IO.StreamWriter fileResult =
+                        new System.IO.StreamWriter(runResults);
+
+            xmlBounty bountydata = new xmlBounty(projectName + "_results.xml");
+
+            foreach (KeyValuePair<string, string> address in campaign.Partecipants)
+            {
+                await fileResult.WriteLineAsync(address.Value + " connected with:");
+
+                totalTransaction = bitcoinScan.GetTransactionsCount(address.Key);
+                int limit = 100;
+                string stringJson = bitcoinScan.GetTransactions(address.Key, 100);
+                JObject jsonTransactions = JObject.Parse(stringJson);
+
+                bool firstRun = true;
+                currentTransactionProgress = 0;
+                
+
+                while (jsonTransactions != null || firstRun == true)
+                {
+                    firstRun = false;
+
+                    try
+                    {
+                        foreach (JToken element in jsonTransactions["address"]["transactions"])
+                        {
+
+                            string stringTransactionJson = bitcoinScan.GetTransactionDetails(element["txid"].ToString());
+                            string transactionId = element["txid"].ToString();
+                            //Console.WriteLine("Checking Transaction:" + transactionId);
+                            JObject json = JObject.Parse(stringTransactionJson);
+                            Dictionary<string, double> addressInput = new Dictionary<string, double>();
+
+                            if (json["transaction"]["inputs"].Count() > 0)
+                            {
+                                if (json["transaction"]["inputs"][0].Count() > 0)
+                                    if (json["transaction"]["inputs"][0]["addresses"].Count() > 0)
+                                    {
+                                        foreach (JToken jsonAddress in json["transaction"]["inputs"][0]["addresses"])
+                                        {
+                                            addressInput.Add(jsonAddress.Value<string>(), Double.Parse(json["transaction"]["inputs"][0]["value"].Value<string>()));
+                                        }
+                                    }
+
+                            }
+
+                            Dictionary<string, double> addressOutputList = new Dictionary<string, double>();
+                            if (json["transaction"]["outputs"].Count() > 0)
+                            {
+                                if (json["transaction"]["outputs"][0].Count() > 0)
+                                    if (json["transaction"]["outputs"][0]["addresses"].Count() > 0)
+                                    {
+                                        foreach (JToken jsonAddress in json["transaction"]["outputs"][0]["addresses"])
+                                        {
+                                            addressOutputList.Add(jsonAddress.Value<string>(), Double.Parse(json["transaction"]["outputs"][0]["value"].Value<string>()));
+                                        }
+                                    }
+
+                            }
+
+                            foreach (KeyValuePair<string, double> addressIn in addressInput)
+                            {
+
+                                if (addressOutputList.ContainsKey(address.Key))
+                                {
+
+                                    connected = bitcoinScan.CheckIfAnyTrasactionWithOtherAddress(campaign.Partecipants, addressIn.Key);
+
+                                    if (connected != null && connected.Result == true)
+                                    {
+                                        bountydata.AddUserBtc(address.Value, address.Key);
+
+                                        fileResult.WriteLine(campaign.Partecipants[connected.Address] + " -> Amount BTC: " + addressIn.Value + " - tx: " + "https://www.blockchain.com/btc/tx/" + transactionId + " " + addressInput + " " + address.Key);
+
+                                        bountydata.AddUserBtcConnection(address.Value, address.Key, campaign.Partecipants[connected.Address], connected.Address, campaign.Name, addressIn.Value.ToString(), transactionId, addressIn.Key, address.Key);
+                                        connected = null;
+                                    }
+                                }
+
+                            }
+
+                            foreach (KeyValuePair<string, double> addressOut in addressOutputList)
+                            {
+
+                                if (addressInput.ContainsKey(address.Key))
+                                {
+                                    connected = bitcoinScan.CheckIfAnyTrasactionWithOtherAddress(campaign.Partecipants, addressOut.Key);
+
+                                    if (connected != null && connected.Result == true)
+                                    {
+                                        bountydata.AddUserBtc(address.Value, address.Key);
+
+                                        fileResult.WriteLine(campaign.Partecipants[connected.Address] + " -> Amount BTC: " + addressOut.Value + " - tx: " + "https://www.blockchain.com/btc/tx/" + transactionId + " " + addressInput + " " + address.Key);
+
+                                        bountydata.AddUserBtcConnection(address.Value, address.Key, campaign.Partecipants[connected.Address], connected.Address, campaign.Name, addressOut.Value.ToString(), transactionId, addressOut.Key, address.Key);
+                                        connected = null;
+                                    }
+                                }
+
+                            }
+
+                            currentTransactionProgress++;
+                            ReportProgressStatus(progressinfo, totalTransaction, currentTransactionProgress,
+                                campaign.Name + " - Checked transactions " + currentTransactionProgress + "/" + totalTransaction,
+                                Report.Transaction);
+                           
+                        }
+                    }                             
+                    catch (Exception e)
+                    {
+                        Console.WriteLine(e);
+                        throw;
+                    }
+
+                    string NextLink = jsonTransactions["address"]["transaction_paging"]["next_link"]
+                        .Value<string>();
+
+                    if (NextLink != null)
+                    {
+                        stringJson =
+                            bitcoinScan.GetHtmlFromUrlLimit(NextLink, limit, out limit);
+                        jsonTransactions = JObject.Parse(stringJson);
+                    }
+                    else
+                    {
+                        jsonTransactions = null;
+                    }
+
+                }
+
+                currentAddressProgress++;
+                ReportProgressStatus(progressinfo, totalAddress, currentAddressProgress,
+                    campaign.Name + " - Verified " + address.Key + " - " + currentAddressProgress + "/" + totalAddress,
                     Report.Address);
 
 
