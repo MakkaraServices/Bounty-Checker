@@ -2,6 +2,7 @@
 using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -98,6 +99,10 @@ namespace BountyChecker
                 await fileResult.WriteLineAsync(address.Value + " connected with:");
 
                 totalTransaction = bitcoinScan.GetTransactionsCount(address.Key);
+
+                if (totalTransaction == 0)
+                    continue;
+
                 int limit = 100;
                 string stringJson = bitcoinScan.GetTransactions(address.Key, 100);
                 JObject jsonTransactions = JObject.Parse(stringJson);
@@ -124,14 +129,11 @@ namespace BountyChecker
                             if (json["transaction"]["inputs"].Count() > 0)
                             {
                                 if (json["transaction"]["inputs"][0].Count() > 0)
-                                    if (json["transaction"]["inputs"][0]["addresses"].Count() > 0)
-                                    {
-                                        foreach (JToken jsonAddress in json["transaction"]["inputs"][0]["addresses"])
+                                        foreach (JToken jsonAddress in json["transaction"]["inputs"])
                                         {
-                                            addressInput.Add(jsonAddress.Value<string>(), Double.Parse(json["transaction"]["inputs"][0]["value"].Value<string>()));
+                                            if (addressInput.ContainsKey(jsonAddress["addresses"][0].Value<string>()) == false)
+                                                addressInput.Add(jsonAddress["addresses"][0].Value<string>(), Double.Parse(jsonAddress["value"].Value<string>()));
                                         }
-                                    }
-
                             }
 
                             Dictionary<string, double> addressOutputList = new Dictionary<string, double>();
@@ -147,24 +149,20 @@ namespace BountyChecker
                                     }
 
                             }
-
                             foreach (KeyValuePair<string, double> addressIn in addressInput)
                             {
+                                if (addressInput.Count > 1 && addressIn.Key != address.Key) { 
+                                    connected = bitcoinScan.CheckIfAnyTrasactionWithinInput(campaign.Partecipants, addressIn.Key);
 
-                                if (addressOutputList.ContainsKey(address.Key))
+                                    SaveConnection(campaign, connected, bountydata, address, fileResult, addressIn, transactionId, addressInput);
+                                }
+
+                                if (addressOutputList.ContainsKey(address.Key) && addressIn.Key != address.Key)
                                 {
 
                                     connected = bitcoinScan.CheckIfAnyTrasactionWithOtherAddress(campaign.Partecipants, addressIn.Key);
 
-                                    if (connected != null && connected.Result == true)
-                                    {
-                                        bountydata.AddUserBtc(address.Value, address.Key);
-
-                                        fileResult.WriteLine(campaign.Partecipants[connected.Address] + " -> Amount BTC: " + addressIn.Value + " - tx: " + "https://www.blockchain.com/btc/tx/" + transactionId + " " + addressInput + " " + address.Key);
-
-                                        bountydata.AddUserBtcConnection(address.Value, address.Key, campaign.Partecipants[connected.Address], connected.Address, campaign.Name, addressIn.Value.ToString(), transactionId, addressIn.Key, address.Key);
-                                        connected = null;
-                                    }
+                                    SaveConnection(campaign, connected, bountydata, address, fileResult, addressIn, transactionId, addressInput);
                                 }
 
                             }
@@ -172,19 +170,11 @@ namespace BountyChecker
                             foreach (KeyValuePair<string, double> addressOut in addressOutputList)
                             {
 
-                                if (addressInput.ContainsKey(address.Key))
+                                if (addressInput.ContainsKey(address.Key) && addressOut.Key != address.Key)
                                 {
                                     connected = bitcoinScan.CheckIfAnyTrasactionWithOtherAddress(campaign.Partecipants, addressOut.Key);
 
-                                    if (connected != null && connected.Result == true)
-                                    {
-                                        bountydata.AddUserBtc(address.Value, address.Key);
-
-                                        fileResult.WriteLine(campaign.Partecipants[connected.Address] + " -> Amount BTC: " + addressOut.Value + " - tx: " + "https://www.blockchain.com/btc/tx/" + transactionId + " " + addressInput + " " + address.Key);
-
-                                        bountydata.AddUserBtcConnection(address.Value, address.Key, campaign.Partecipants[connected.Address], connected.Address, campaign.Name, addressOut.Value.ToString(), transactionId, addressOut.Key, address.Key);
-                                        connected = null;
-                                    }
+                                    SaveConnection(campaign, connected, bountydata, address, fileResult, addressOut, transactionId, addressInput);
                                 }
 
                             }
@@ -231,6 +221,23 @@ namespace BountyChecker
 
 
             return true;
+        }
+
+        private static void SaveConnection(Campaign campaign, Connection connected, xmlBounty bountydata, KeyValuePair<string, string> address,
+            StreamWriter fileResult, KeyValuePair<string, double> addressIn, string transactionId, Dictionary<string, double> addressInput)
+        {
+            if (connected != null && connected.Result == true)
+            {
+                bountydata.AddUserBtc(address.Value, address.Key);
+
+                fileResult.WriteLine(campaign.Partecipants[connected.Address] + " -> Amount BTC: " + addressIn.Value +
+                                     " - tx: " + "https://www.blockchain.com/btc/tx/" + transactionId + " " + addressInput +
+                                     " " + address.Key + connected.ConnectionDescription);
+
+                bountydata.AddUserBtcConnection(address.Value, address.Key, campaign.Partecipants[connected.Address],
+                    connected.Address, campaign.Name, addressIn.Value.ToString(), transactionId, addressIn.Key, address.Key,connected.ConnectionDescription);
+                connected = null;
+            }
         }
 
         private static void ReportProgressStatus(IProgress<ProgressStatus> progressinfo, int total, int done, string description, Report type)

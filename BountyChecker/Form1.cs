@@ -49,6 +49,8 @@ namespace BountyChecker
                 MessageBox.Show(ex.Message);
             }
 
+            File.Delete(projectName + "_results.xml");
+
             bool result = false;
             foreach (Campaign campaign in bl.SpreadSheetList)
                 result = await Task.Run(() => AddressComparer.CheckAddressListEthereum(projectName,campaign, progressDispa, form.textBox1.Text));
@@ -81,6 +83,9 @@ namespace BountyChecker
             }
 
             bool result = false;
+
+            File.Delete(projectName + "_results.xml");
+
             foreach (Campaign campaign in bl.SpreadSheetList)
                 result = await Task.Run(() => AddressComparer.CheckAddressListBitcoin(projectName, campaign, progressDispa));
 
@@ -166,7 +171,7 @@ namespace BountyChecker
 
             view.CreateHtmlOutputBitcoin(outputFile);
 
-            //view.ShowConnectionsPerCategory(CampaignSelected);
+            
             System.Diagnostics.Process.Start(outputFile + "index.html");
             button1.Enabled = true;
             button2.Enabled = true;
