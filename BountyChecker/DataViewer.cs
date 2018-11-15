@@ -195,12 +195,21 @@ namespace BountyChecker
                         listAbuser.Add(connection.UserConnected.BtcTalkProfileLink, "");
 
                     string usernameConnected = btcScraper.GetUserNameById(connection.UserConnected.BtcTalkProfileLink.Replace("https://bitcointalk.org/index.php?action=profile;u=", ""));
+
+                    string connectionType = "";
+
+                    if (connection.Type.Contains("InputInput"))
+                        connectionType = "<b>Type:</b><font color=\"red\">" + connection.Type + "</font><br/>";
+                    else
+                        connectionType = "<b>Type:</b><font color=\"orange\">" + connection.Type + "</font><br/>";
+
                     fileOutput.WriteLine("<hr>"
                          + "<b>Category:</b> " + connection.Campaign + "<br/> "
                         + "<a href=\"" + connection.UserConnected.BtcTalkProfileLink + "\"><b>" + usernameConnected + "</b></a><br/>"
                         + "<b>Btc Amount -> " + connection.BtcAmount + "</b><br/>"
                         + "<b>Transaction</b><a href=\"https://www.blockchain.com/btc/tx/" + connection.Transaction + "\"> " + connection.Transaction + " </a><br/>"
-                        + "<b>Addresses</b> " + connection.Description + "<br/>");
+                        + "<b>Addresses</b> " + connection.Description + "<br/>"                       
+                        + connectionType);
 
                 }
 
@@ -460,7 +469,7 @@ namespace BountyChecker
             connection.BtcAmount = data.Attribute("BTC").Value;
             connection.Transaction = data.Attribute("Transaction").Value;
             connection.Description = data.Attribute("Description").Value;
-
+            connection.Type = data.Attribute("ConnectionType").Value;
 
             return connection;
         }

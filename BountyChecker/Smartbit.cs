@@ -138,7 +138,20 @@ namespace BountyChecker
             {
                 if (adress.Key.ToLower().Equals(address_to_Check.ToLower()) == true)
                 {
-                    return new Connection(true, adress.Key);
+                    return new Connection(true, adress.Key, Connection.ConnectionSpec.BitcoinInputOutput);
+                }
+            }
+
+            return new Connection(false, null);
+        }
+
+        public Connection CheckIfAnyTrasactionWithinInput(Dictionary<string, string> addressList, string address_to_Check)
+        {
+            foreach (KeyValuePair<string, string> adress in addressList)
+            {
+                if (adress.Key.ToLower().Equals(address_to_Check.ToLower()) == true )
+                {
+                    return new Connection(true, adress.Key, Connection.ConnectionSpec.BitcoinInputInput);
                 }
             }
 

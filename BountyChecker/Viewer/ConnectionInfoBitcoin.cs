@@ -13,7 +13,7 @@ namespace BountyChecker.Viewer
         public string BtcAmount { get; set; }
         public string Transaction { get; set; }
         public string Description { get; set; }
-
+        public string Type { get; set; }
 
     }
 }

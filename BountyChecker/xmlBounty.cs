@@ -143,7 +143,7 @@ namespace BountyChecker
             }
         }
 
-        public void AddUserBtcConnection(string userId, string ethAddress, string connectedUserId, string connectedAddress, string campaignName, string btcAmount, string tx, string fromAddress, string toAddress)
+        public void AddUserBtcConnection(string userId, string ethAddress, string connectedUserId, string connectedAddress, string campaignName, string btcAmount, string tx, string fromAddress, string toAddress, string ConnectionTypeDescription)
         {
             IEnumerable<XElement> users = (from el in m_bountyXml.Root.Elements("User")
                                            where (string)el.Attribute("UserId") == userId
@@ -168,7 +168,7 @@ namespace BountyChecker
                 newConnection.SetAttributeValue("BTC", btcAmount);                
                 newConnection.SetAttributeValue("Transaction", tx);
                 newConnection.SetAttributeValue("Description", fromAddress + " " + toAddress);
-
+                newConnection.SetAttributeValue("ConnectionType", ConnectionTypeDescription);
 
 
                 address.Add(newConnection);
